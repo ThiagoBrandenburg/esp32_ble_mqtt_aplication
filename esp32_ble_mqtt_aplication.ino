@@ -46,7 +46,7 @@ void connectToWiFi() {
 
 
 //BLE
-float distanciaRssi(int rssi, int measured_power, float n){
+float distanciaRssi(int measured_power, int rssi, float n){
   float distancia = pow(10,float(measured_power-rssi)/(10*n));
   return distancia;
 }
@@ -231,27 +231,31 @@ void loop()
      // Valor inicial menor possível
     float distancias[count];
     int strongestRSSI = -100;
+    int strongestRSSIposition = 0;
     for (int i = 0; i < count; i++) {
       //BLEAdvertisedDevice device = scanResults.getDevice(i);
       int rssi = foundDevices.getDevice(i).getRSSI();
       //Serial.println(rssi);
       if (rssi > strongestRSSI) {
-        strongestRSSI = i;
+        strongestRSSIposition = i;
+        strongestRSSI = rssi;
       }
       distancias[i] = distanciaRssi(-69,rssi,2);
     }
-    float distancia = distanciaRssi(distancias[strongestRSSI],-69,2);
-    int brightness = map(distancia, 10, 0, 0, 255);
+    //float distancia = distanciaRssi(-69,distancias[strongestRSSIposition],2);
+    int brightness = map(distancias[strongestRSSIposition], 10, 0, 0, 255);
     analogWrite(ledPin, brightness);
-    Serial.println(distancia);
+    Serial.println(distancias[strongestRSSIposition]);
 
     if (!mqttClient.connected())
       reconnect();
     for (int i=0; i < count; i++){
-      char data[40];
+      char data[50];
       sprintf(data,"Loop:%d, Device: %d, Distance:%f",iteracao,i,distancias[i]);
       mqttClient.publish("/swa/distancia",data);
-      Serial.println("tried");
+      if (i==strongestRSSIposition){
+        Serial.println(data);
+      }
       pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
     }
 
