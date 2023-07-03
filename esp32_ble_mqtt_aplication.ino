@@ -15,8 +15,8 @@
 //Usuario e Senha Rede
 // const char *SSID = "Maquina de Lavar";
 // const char *PWD = "Brandenburg";
-const char *SSID = "WALLE@SIMFIBRA";
-const char *PWD = "gsatgsat";
+const char *SSID = "Maquina de Lavar";
+const char *PWD = "Brandenburg";
 
 //Variaveis
 int scanTime = 5; //In seconds
@@ -26,8 +26,6 @@ const int ledPin = 21;//Entrada 21 para o pino
 //MQTT CLIENT
 char *mqttServer = "mqtt-dashboard.com";
 int mqttPort = 1883;
-char *mqttuser = "teste1";
-char *mqttpassword = "OIRCteste1";
 int iteracao = 0;
 //char data[10];
 WiFiClient wifiClient;
