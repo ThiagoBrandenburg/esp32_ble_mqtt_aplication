@@ -1,0 +1,434 @@
+//This example code is in the Public Domain (or CC0 licensed, at your option.)
+//By Evandro Copercini - 2018
+//
+//This example creates a bridge between Serial and Classical Bluetooth (SPP)
+//and also demonstrate that SerialBT have the same functionalities of a normal Serial
+/*
+#include <Arduino.h>
+
+// Pin connected to the LED
+
+const int ledPin = 21;
+
+void setup() {
+  // initialize digital pin LED_BUILTIN as an output.
+  Serial.begin(9600);
+  Serial.println("in setup");
+  pinMode(ledPin, OUTPUT);
+  delay(1000);
+}
+
+// the loop function runs over and over again forever
+void loop() {
+  Serial.println("led going on");
+  digitalWrite(ledPin, HIGH);   // turn the LED on (HIGH is the voltage level)
+  delay(1000);                       // wait for a second
+
+  Serial.println("led going off");
+  digitalWrite(ledPin, LOW);    // turn the LED off by making the voltage LOW
+  delay(1000);                       // wait for a second
+}
+*/
+/*
+#include "BluetoothSerial.h"
+
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run make menuconfig to and enable it
+#endif
+
+const int ledPin = 21;
+BluetoothSerial SerialBT;
+
+void setup() {
+  Serial.begin(9600);
+  SerialBT.begin("ESP32test"); //Bluetooth device name
+  Serial.println("The device started, now you can pair it with bluetooth!");
+  Serial.println("in setup");
+  pinMode(ledPin, OUTPUT);
+  delay(1000);
+  digitalWrite(ledPin, LOW);
+}
+
+void loop() {
+  if (Serial.available()) {
+    SerialBT.write(Serial.read());
+    digitalWrite(ledPin, LOW);
+  }
+  if (SerialBT.available()) {
+    Serial.write(SerialBT.read());
+    digitalWrite(ledPin, HIGH);
+  }
+  delay(20);
+}
+*/
+/*
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
+#include <Arduino.h>
+
+#define service_UUID "a1449c6e-5dd0-4da9-a775-a0d8756c0d2a"
+
+const int ledPin = 21;
+
+BLEScan* pBLEScan;
+
+class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
+  void onResult(BLEAdvertisedDevice advertisedDevice) {}
+};
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(ledPin, OUTPUT);
+  BLEDevice::init("ESP32_dude");
+  pBLEScan = BLEDevice::getScan();
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+  pBLEScan->setActiveScan(true);
+  BLEDevice::startAdvertising();
+}
+
+void loop() {
+  BLEScanResults scanResults = pBLEScan->start(2);
+
+  int strongestRSSI = -100; // Valor inicial menor possível
+  for (int i = 0; i < scanResults.getCount(); i++) {
+    BLEAdvertisedDevice device = scanResults.getDevice(i);
+    int rssi = device.getRSSI();
+
+    if (rssi > strongestRSSI) {
+      strongestRSSI = rssi;
+    }
+  }
+
+  // Ajustar o brilho do LED baseado no RSSI
+  int brightness = map(strongestRSSI, -100, -40, 0, 255);
+  analogWrite(ledPin, brightness);
+
+  pBLEScan->clearResults();
+  delay(5000); // Espere por 5 segundos antes de fazer uma nova leitura
+}
+*/
+/*
+#include <Arduino.h>
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+
+#define SERVICE_UUID      "f0043a98-cbe3-48eb-b404-3187b8ce2303" // UUID do serviço BLE
+#define CHARACTERISTIC_UUID "ff791bf2-0894-4f81-94e1-17662028c7f4" // UUID da característica BLE
+
+BLEServer* pServer;
+BLECharacteristic* pCharacteristic;
+
+
+// Função para calcular a distância com base no RSSI
+float calculateDistance(int rssi) {
+  int txPower = -59; // Potência do sinal no ponto de referência (em dBm)
+  float ratio = rssi * 1.0 / txPower;
+
+  if (ratio < 1.0) {
+    return pow(ratio, 10);
+  } else {
+    float distance = (0.89976) * pow(ratio, 7.7095) + 0.111;
+    return distance;
+  }
+}
+
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer* pServer) {
+    Serial.println("Dispositivo conectado");
+  }
+
+  void onDisconnect(BLEServer* pServer) {
+    Serial.println("Dispositivo desconectado");
+  }
+};
+
+void setup() {
+  Serial.begin(115200);
+
+  // Inicializa o servidor BLE
+  BLEDevice::init("ESP32 Server");
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  // Cria um serviço BLE
+  BLEService* pService = pServer->createService(SERVICE_UUID);
+
+  // Cria uma característica BLE
+  pCharacteristic = pService->createCharacteristic(
+                      CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_READ
+                    );
+
+  // Adiciona a característica ao serviço
+  pService->start();
+  pServer->getAdvertising()->start();
+  Serial.println("Servidor BLE iniciado");
+}
+
+void loop() {
+  // Verifica se há dispositivos conectados
+  if (pServer->getConnByHandle(0) != nullptr) {
+    // Obtém o RSSI do primeiro dispositivo conectado
+    int rssi = pServer->
+    int rssi = pServer->getConnByHandle(0)->getRSSI();
+
+    // Calcula a distância com base no RSSI
+    float distance = calculateDistance(rssi);
+
+    // Imprime a distância no monitor serial
+    Serial.print("Distância: ");
+    Serial.print(distance);
+    Serial.println(" metros");
+  }
+
+  delay(1000);
+}
+*/
+/*
+#include <Arduino.h>
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
+
+BLEScan* pBLEScan;
+BLEAdvertisedDevice* selectedDevice = nullptr;
+
+class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
+  void onResult(BLEAdvertisedDevice advertisedDevice) {
+    Serial.print("Dispositivo encontrado: ");
+    Serial.println(advertisedDevice.getAddress().toString().c_str());
+    Serial.print("  RSSI: ");
+    Serial.println(advertisedDevice.getRSSI());
+
+    // Se o dispositivo correspondente for encontrado, atribui-o à variável selectedDevice
+    if (advertisedDevice.getAddress().equals("00:11:22:33:44:55")) {
+      selectedDevice = new BLEAdvertisedDevice(advertisedDevice);
+    }
+  }
+};
+
+void setup() {
+  Serial.begin(115200);
+
+  // Inicializa o BLE
+  BLEDevice::init("ESP32 Client");
+  pBLEScan = BLEDevice::getScan();
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+  pBLEScan->setActiveScan(true);
+}
+
+void loop() {
+  // Procura dispositivos BLE por 5 segundos
+  BLEScanResults scanResults = pBLEScan->start(5);
+  pBLEScan->clearResults();
+
+  // Verifica se o dispositivo selecionado foi encontrado
+  if (selectedDevice != nullptr) {
+    Serial.print("Dispositivo selecionado: ");
+    Serial.println(selectedDevice->getAddress().toString().c_str());
+    Serial.print("  RSSI: ");
+    Serial.println(selectedDevice->getRSSI());
+  } else {
+    Serial.println("Nenhum dispositivo selecionado encontrado");
+  }
+
+  delay(5000); // Aguarda 5 segundos antes de iniciar a próxima varredura
+}
+*/
+/*
+   Based on Neil Kolban example for IDF: https://github.com/nkolban/esp32-snippets/blob/master/cpp_utils/tests/BLE%20Tests/SampleScan.cpp
+   Ported to Arduino ESP32 by Evandro Copercini
+   Changed to a beacon scanner to report iBeacon, EddystoneURL and EddystoneTLM beacons by beegee-tokyo
+*/
+
+/*
+#include <Arduino.h>
+
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
+#include <BLEEddystoneURL.h>
+#include <BLEEddystoneTLM.h>
+#include <BLEBeacon.h>
+#include <WiFi.h>
+
+//Usuario e Senha Rede
+const char *SSID = "Maquina de Lavar";
+const char *PWD = "Brandenburg";
+
+
+//Variaveis
+int scanTime = 5; //In seconds
+int iteracao = 0;//Iteracao do loop
+BLEScan *pBLEScan;
+const int ledPin = 21;//Entrada 21 para o pino
+
+void connectToWiFi() {
+  Serial.print("Connecting to Wifi..");
+ 
+  WiFi.begin(SSID, PWD);
+  Serial.println(SSID);
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+  }
+  Serial.print("Connected.");
+}
+
+class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
+{
+    void onResult(BLEAdvertisedDevice advertisedDevice)
+    {
+      if (advertisedDevice.haveName())
+      {
+        Serial.print("Device name: ");
+        Serial.println(advertisedDevice.getName().c_str());
+        Serial.println("");
+      }
+
+      if (advertisedDevice.haveServiceUUID())
+      {
+        BLEUUID devUUID = advertisedDevice.getServiceUUID();
+        Serial.print("Found ServiceUUID: ");
+        Serial.println(devUUID.toString().c_str());
+        Serial.println("");
+      }
+      
+      if (advertisedDevice.haveManufacturerData() == true)
+      {
+        std::string strManufacturerData = advertisedDevice.getManufacturerData();
+
+        uint8_t cManufacturerData[100];
+        strManufacturerData.copy((char *)cManufacturerData, strManufacturerData.length(), 0);
+
+        if (strManufacturerData.length() == 25 && cManufacturerData[0] == 0x4C && cManufacturerData[1] == 0x00)
+        {
+          Serial.println("Found an iBeacon!");
+          BLEBeacon oBeacon = BLEBeacon();
+          oBeacon.setData(strManufacturerData);
+          Serial.printf("iBeacon Frame\n");
+          Serial.printf("ID: %04X Major: %d Minor: %d UUID: %s Power: %d\n", oBeacon.getManufacturerId(), ENDIAN_CHANGE_U16(oBeacon.getMajor()), ENDIAN_CHANGE_U16(oBeacon.getMinor()), oBeacon.getProximityUUID().toString().c_str(), oBeacon.getSignalPower());
+        }
+        else
+        {
+          Serial.println("Found another manufacturers beacon!");
+          Serial.printf("strManufacturerData: %d ", strManufacturerData.length());
+          for (int i = 0; i < strManufacturerData.length(); i++)
+          {
+            Serial.printf("[%X]", cManufacturerData[i]);
+          }
+          Serial.printf("\n");
+        }
+      }
+
+      uint8_t *payLoad = advertisedDevice.getPayload();
+      // search for Eddystone Service Data in the advertising payload
+      // *payload shall point to eddystone data or to its end when not found
+      const uint8_t serviceDataEddystone[3] = {0x16, 0xAA, 0xFE}; // it has Eddystone BLE UUID
+      const size_t payLoadLen = advertisedDevice.getPayloadLength();
+      uint8_t *payLoadEnd = payLoad + payLoadLen - 1; // address of the end of payLoad space
+      while (payLoad < payLoadEnd) {
+        if (payLoad[1] == serviceDataEddystone[0] && payLoad[2] == serviceDataEddystone[1] && payLoad[3] == serviceDataEddystone[2]) {
+          // found!
+          payLoad += 4;
+          break;
+        }
+        payLoad += *payLoad + 1;  // payLoad[0] has the field Length
+      }
+
+      if (payLoad < payLoadEnd) // Eddystone Service Data and respective BLE UUID were found
+      {
+        if (*payLoad == 0x10)
+        {
+          Serial.println("Found an EddystoneURL beacon!");
+          BLEEddystoneURL foundEddyURL = BLEEddystoneURL();
+          uint8_t URLLen = *(payLoad - 4) - 3;  // Get Field Length less 3 bytes (type and UUID) 
+          foundEddyURL.setData(std::string((char*)payLoad, URLLen));
+          std::string bareURL = foundEddyURL.getURL();
+          if (bareURL[0] == 0x00)
+          {
+            // dumps all bytes in advertising payload
+            Serial.println("DATA-->");
+            uint8_t *payLoad = advertisedDevice.getPayload();
+            for (int idx = 0; idx < payLoadLen; idx++)
+            {
+              Serial.printf("0x%02X ", payLoad[idx]);
+            }
+            Serial.println("\nInvalid Data");
+            return;
+          }
+
+          Serial.printf("Found URL: %s\n", foundEddyURL.getURL().c_str());
+          Serial.printf("Decoded URL: %s\n", foundEddyURL.getDecodedURL().c_str());
+          Serial.printf("TX power %d\n", foundEddyURL.getPower());
+          Serial.println("\n");
+        } 
+        else if (*payLoad == 0x20)
+        {
+          Serial.println("Found an EddystoneTLM beacon!");
+ 
+          BLEEddystoneTLM eddystoneTLM;
+          eddystoneTLM.setData(std::string((char*)payLoad, 14));
+          Serial.printf("Reported battery voltage: %dmV\n", eddystoneTLM.getVolt());
+          Serial.printf("Reported temperature: %.2f°C (raw data=0x%04X)\n", eddystoneTLM.getTemp(), eddystoneTLM.getRawTemp());
+          Serial.printf("Reported advertise count: %d\n", eddystoneTLM.getCount());
+          Serial.printf("Reported time since last reboot: %ds\n", eddystoneTLM.getTime());
+          Serial.println("\n");
+          Serial.print(eddystoneTLM.toString().c_str());
+          Serial.println("\n");
+        }
+      }
+    }
+};
+
+void setup()
+{
+  Serial.begin(115200);
+  pinMode(ledPin, OUTPUT);
+  Serial.println("Scanning...");
+
+  BLEDevice::init("ESP32 Scanner");
+  pBLEScan = BLEDevice::getScan(); //create new scan
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+  pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
+  pBLEScan->setInterval(100);
+  pBLEScan->setWindow(99); // less or equal setInterval value
+}
+
+void loop()
+{
+  // put your main code here, to run repeatedly:
+  Serial.print(iteracao);
+  Serial.print("\n");
+  iteracao +=1;
+  
+  BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
+
+  int count = foundDevices.getCount();
+  int strongestRSSI = -100;
+  if (count >0){
+    Serial.print("Devices found: ");
+    Serial.println(count);
+     // Valor inicial menor possível
+    for (int i = 0; i < count; i++) {
+      //BLEAdvertisedDevice device = scanResults.getDevice(i);
+      int rssi = foundDevices.getDevice(i).getRSSI();
+      if (rssi > strongestRSSI) {
+        strongestRSSI = rssi;
+      }
+    }
+    Serial.println("Device strongest RSSI:");
+    Serial.println(strongestRSSI);
+    Serial.println("Scan done!");
+    pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
+  }
+  int brightness = map(strongestRSSI, -100, -40, 0, 255);
+  analogWrite(ledPin, brightness);
+
+}
+*/
